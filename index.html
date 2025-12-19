@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>微岩石调色系统 v3.5 (清空数据版)</title>
+  <style>
+    :root { --primary:#2c3e50; --accent:#3498db; --bg:#f4f7f6; --shipment:#e67e22; --success:#27ae60; --tab-inactive:#bdc3c7; --io:#8e44ad; --danger:#e74c3c; }
+    * { box-sizing: border-box; }
+    body{ font-family: system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; background:var(--bg); color:#333; margin:0; padding:20px; }
+    .container{ max-width:960px; margin:0 auto; background:#fff; padding:28px; border-radius:12px; box-shadow:0 4px 15px rgba(0,0,0,.08); position: relative; }
+    
+    /* 顶部功能栏 */
+    .top-bar { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px; flex-wrap: wrap; gap: 10px; }
+    .top-bar h1 { margin: 0; border: none; padding: 0; font-size: 1.5em; text-align: left; }
+    .io-actions { display: flex; gap: 10px; }
+    .btn-io { background: var(--io); color: #fff; padding: 8px 12px; border-radius: 6px; font-size: 0.9em; display: flex; align-items: center; gap: 5px; cursor: pointer; border: none; transition: 0.2s; }
+    .btn-io:hover { opacity: 0.9; }
+    
+    /* 清空按钮样式 */
+    .btn-clear { background: var(--danger); }
+    .btn-clear:hover { background: #c0392b; }
+
+    h2{ font-size:1.15em; color:var(--accent); margin:22px 0 10px; border-left: 4px solid var(--accent); padding-left: 10px; }
+    
+    .form-section{ margin-bottom:18px; border-bottom: 1px solid #f0f0f0; padding-bottom: 15px; }
+    .row{ display:flex; gap:16px; flex-wrap:wrap; margin-bottom:12px; }
+    .col{ flex:1; min-width:160px; }
+    label{ display:block; margin-bottom:6px; font-weight:700; font-size:.9em; }
+    input,select{ width:100%; padding:10px; border:1px solid #ddd; border-radius:8px; font-size:1em; }
+    input:focus,select:focus{ outline:none; border-color:var(--accent); }
+
+    /* 样板独立参数区样式 */
+    .sample-params { background: #f0f4f8; padding: 15px; border-radius: 8px; margin-bottom: 15px; border: 1px solid #dce4ec; }
+    .sample-params .row { margin-bottom: 8px; }
+    .sample-params label { color: #57606f; font-size: 0.85em; }
+
+    /* 多样板标签页样式 */
+    .tabs-header { display: flex; gap: 5px; overflow-x: auto; padding-bottom: 5px; border-bottom: 2px solid #eee; margin-bottom: 15px; }
+    .tab-btn { padding: 10px 20px; background: var(--bg); border: none; border-radius: 8px 8px 0 0; cursor: pointer; font-weight: bold; color: #7f8c8d; min-width: 100px; transition: all 0.2s; position: relative; white-space: nowrap; display: flex; align-items: center; gap: 8px; }
+    .tab-btn.active { background: var(--accent); color: #fff; box-shadow: 0 -2px 5px rgba(0,0,0,0.05); }
+    
+    .tab-name { pointer-events: none; } 
+    
+    .tab-btn .close-tab { 
+        font-size: 16px; line-height: 1; opacity: 0.6; padding: 0 4px; border-radius: 50%;
+        display: inline-flex; align-items: center; justify-content: center;
+        width: 20px; height: 20px; cursor: pointer;
+    }
+    .tab-btn .close-tab:hover { opacity: 1; color: #c0392b; background: rgba(255,255,255,0.8); }
+    .btn-add-tab { background: #ecf0f1; color: var(--accent); font-size: 1.2em; padding: 5px 15px; }
+
+    .sample-content { display: none; animation: fadeIn 0.3s; }
+    .sample-content.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+    table{ width:100%; border-collapse:collapse; margin-top:8px; }
+    th,td{ padding:12px; text-align:left; border-bottom:1px solid #eee; }
+    th{ background:#f8f9fa; color:var(--primary); font-weight:700; }
+    td.highlight { color: var(--accent); font-weight: bold; }
+
+    .btn{ border:none; padding:10px 14px; border-radius:10px; cursor:pointer; font-size:.95em; transition: opacity 0.2s; }
+    .btn:hover { opacity: 0.9; }
+    .btn-add{ background:var(--accent); color:#fff; }
+    .btn-remove{ background:#e74c3c; color:#fff; width: 30px; height: 30px; border-radius: 50%; padding: 0; display: flex; align-items: center; justify-content: center; }
+    .btn-img{ background:#8e44ad; color:#fff; font-size: 0.9em; padding: 6px 12px;}
+    .btn-csv{ background:var(--success); color:#fff; width: 100%; padding: 12px; font-size: 1.1em; font-weight: bold; margin-top: 10px; }
+    .btn-ship{ background:var(--shipment); color:#fff; width: 100%; padding: 10px; margin-top: 5px;}
+
+    .tip{ font-size:.92em; color:#555; background:#eef2f3; padding:10px 12px; border-radius:10px; margin-bottom: 15px; }
+
+    /* 结果卡片样式 */
+    .result-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(300px, 1fr)); gap: 20px; }
+    .result-card { border: 1px solid #eee; border-radius: 12px; padding: 15px; background: #fff; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-top: 4px solid var(--accent); display: flex; flex-direction: column; }
+    .result-card h3 { margin: 0 0 10px 0; color: var(--primary); display: flex; justify-content: space-between; align-items: center; }
+    .formula-list { font-family: monospace; font-size: 0.95em; color: #555; flex: 1; margin-bottom: 10px; }
+    .formula-line { display: flex; justify-content: space-between; border-bottom: 1px dashed #eee; padding: 4px 0; }
+
+    .shipment-card { border-top-color: var(--shipment); background: #fffcf8; }
+    .shipment-line { display: flex; justify-content: space-between; padding: 6px 0; border-bottom: 1px dashed #e67e22; color: #333; }
+    .shipment-line b { color: #d35400; }
+
+    @media (max-width: 600px){
+      th,td{ white-space:nowrap; padding:10px; }
+      table{ min-width: 680px; }
+      .container { padding: 15px; }
+      .top-bar { flex-direction: column; align-items: flex-start; }
+      .io-actions { width: 100%; justify-content: space-between; margin-top: 10px; }
+      .btn-io { flex: 1; justify-content: center; }
+    }
+
+    /* 弹窗 */
+    .modal{ position:fixed; inset:0; background:rgba(0,0,0,.55); display:none; align-items:center; justify-content:center; padding:16px; z-index:9999; }
+    .modal.open{ display:flex; }
+    .modal-card{ background:#fff; width:min(560px, 100%); border-radius:16px; padding:14px; box-shadow:0 12px 40px rgba(0,0,0,.25); }
+    .modal-head{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; }
+    .modal-imgwrap{ background:#e0e0e0; border:1px solid #ccc; border-radius:12px; padding:20px; overflow:auto; display: flex; justify-content: center; }
+    .modal-imgwrap img{ max-width:100%; height:auto; display:block; box-shadow: 0 4px 10px rgba(0,0,0,0.2); }
+  </style>
+</head>
+<body>
+
+<div class="container">
+  <div class="top-bar">
+    <h1>微岩石调色系统 v3.5</h1>
+    <div class="io-actions">
+       <button class="btn-io" onclick="saveToJSON()">💾 保存工程</button>
+       <button class="btn-io" onclick="document.getElementById('fileInput').click()">📂 打开工程</button>
+       <input type="file" id="fileInput" accept=".json" style="display:none" onchange="loadFromJSON(this)" />
+       <button class="btn-io btn-clear" onclick="clearAllData()">🗑️ 清空数据</button>
+    </div>
+  </div>
+
+  <!-- 1. 公共基础信息 -->
+  <div class="form-section">
+    <h2>1. 项目信息 (公共)</h2>
+    <div class="row">
+      <div class="col">
+        <label>项目名称</label>
+        <input id="projectName" type="text" value="深圳太子湾" oninput="updateAll()" />
+      </div>
+      <div class="col">
+        <label>打样日期</label>
+        <input id="makeDate" type="date" oninput="updateAll()" />
+      </div>
+      <div class="col" style="flex:2;">
+        <div class="tip" style="margin:0; height:100%; display:flex; align-items:center;">
+           📝 注：干粉型号、重量等已移至下方每个样板的独立设置中。
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 2. 多样板调色区域 -->
+  <div class="form-section">
+    <h2>2. 样板配方设计</h2>
+    
+    <!-- 标签栏 -->
+    <div class="tabs-header" id="tabsHeader">
+      <!-- JS生成 -->
+      <button class="tab-btn btn-add-tab" onclick="addNewSample()">+ 加样板</button>
+    </div>
+
+    <!-- 内容区 -->
+    <div id="tabsContent">
+      <!-- JS生成样板表格 -->
+    </div>
+
+    <!-- 隐藏的 Datalist -->
+    <datalist id="colors_list"></datalist>
+  </div>
+
+  <!-- 3. 样板留档预览 -->
+  <div class="form-section">
+    <h2>3. 样板留档预览 & 导出</h2>
+    <div id="previewGrid" class="result-grid">
+      <!-- 动态生成预览卡片 -->
+    </div>
+    <div style="margin-top: 20px;">
+       <button class="btn btn-csv" onclick="exportAllCSV()">📥 一键导出所有样板 CSV (Excel)</button>
+    </div>
+  </div>
+
+  <!-- 4. 大货发货计算 -->
+  <div class="form-section">
+    <h2 style="color:var(--shipment); border-color:var(--shipment);">4. 大货生产 & 发货计算</h2>
+    <div class="row" style="background:#fffdf0; padding:15px; border-radius:8px; border:1px solid #ffe0b2;">
+      <div class="col" style="max-width:260px;">
+        <label style="color:#d35400;">大货包装规格 (kg/瓶)</label>
+        <!-- 改为输入框 + Datalist 模式 -->
+        <input id="prodWeight" type="number" list="weight_presets" value="4" oninput="updateAll()" style="font-weight:bold; color:#d35400; border:2px solid #d35400;">
+        <datalist id="weight_presets">
+          <option value="1"></option>
+          <option value="4"></option>
+          <option value="10"></option>
+          <option value="16"></option>
+          <option value="18"></option>
+          <option value="20"></option>
+          <option value="25"></option>
+        </datalist>
+      </div>
+      <div class="col" style="display:flex; align-items:center;">
+        <span style="font-size:0.9em; color:#d35400;">支持自由输入，例如：18 或 25。此规格应用于所有样板的发货计算。</span>
+      </div>
+    </div>
+
+    <div id="shipmentGrid" class="result-grid" style="margin-top:15px;">
+      <!-- 动态生成发货卡片 -->
+    </div>
+  </div>
+
+</div>
+
+<!-- 图片弹窗 -->
+<div class="modal" id="imgModal" onclick="closeModal(event)">
+  <div class="modal-card">
+    <div class="modal-head">
+      <b id="modalTitle">贴纸预览</b>
+      <button class="btn" onclick="closeModal(event)" style="background:#eee;">关闭</button>
+    </div>
+    <div class="modal-imgwrap">
+      <img id="stickerImg" alt="sticker" />
+    </div>
+    <div style="margin-top:10px; text-align:center;">
+       <a id="downloadLink" class="btn btn-img" href="#" download="sticker.png">⬇️ 下载保存图片</a>
+    </div>
+  </div>
+</div>
+
+<script>
+  // === 数据状态管理 ===
+  let samples = []; 
+  let nextId = 1;
+  const colorCodes = ['NSC01','NSC02','NSC03','NSC04','NSC05','NSC113','NSC114','NSC115','NSC116','NSC117','XY','XR','Xk','NC','KF','TG','yama','W水','W世'];
+
+  // === 初始化 ===
+  window.onload = function() {
+    // 填充色号
+    document.getElementById('colors_list').innerHTML = colorCodes.map(c => `<option value="${c}"></option>`).join('');
+    
+    // 初始化默认数据
+    initDefaultData();
+  };
+
+  // 初始化默认数据函数 (方便重置调用)
+  function initDefaultData() {
+    // 设置日期为今天
+    const d = new Date();
+    document.getElementById('makeDate').value = new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+    document.getElementById('projectName').value = '深圳太子湾';
+    document.getElementById('prodWeight').value = '4';
+
+    // 默认添加三个样板：A, B, C (带有不同的默认值以示区别)
+    samples = [];
+    nextId = 1;
+    document.getElementById('tabsContent').innerHTML = '';
+    // 重置 Header (保留加号按钮)
+    const header = document.getElementById('tabsHeader');
+    header.innerHTML = '<button class="tab-btn btn-add-tab" onclick="addNewSample()">+ 加样板</button>';
+
+    const idA = addSampleInternal('样板 A');
+    setTimeout(() => {
+        const divA = document.getElementById('content_' + idA);
+        if(divA) divA.querySelector('.s-type').value = 'MR02';
+    },0);
+
+    const idB = addSampleInternal('样板 B');
+    setTimeout(() => {
+        const divB = document.getElementById('content_' + idB);
+        if(divB) divB.querySelector('.s-type').value = 'MR01';
+    },0);
+
+    const idC = addSampleInternal('样板 C');
+    setTimeout(() => {
+        const divC = document.getElementById('content_' + idC);
+        if(divC) divC.querySelector('.s-type').value = 'MR03';
+        // 初始选中第一个并计算
+        selectTab(idA);
+        updateAll();
+    }, 10);
+  }
+
+  // === 清空所有数据 ===
+  function clearAllData() {
+    if(!confirm("确定要清空当前所有数据吗？\n这将开始一个新的工程，未保存的数据将丢失。")) return;
+    
+    // 1. 重置项目信息
+    document.getElementById('projectName').value = '新项目';
+    const d = new Date();
+    document.getElementById('makeDate').value = new Date(d.getTime() - d.getTimezoneOffset()*60000).toISOString().slice(0,10);
+    document.getElementById('prodWeight').value = '4';
+
+    // 2. 清空样板数据
+    samples = [];
+    nextId = 1;
+    document.getElementById('tabsHeader').innerHTML = '<button class="tab-btn btn-add-tab" onclick="addNewSample()">+ 加样板</button>';
+    document.getElementById('tabsContent').innerHTML = '';
+
+    // 3. 添加一个空白样板
+    const newId = addSampleInternal('样板 A');
+    selectTab(newId);
+    updateAll();
+    
+    alert("已清空，请开始新工程！");
+  }
+
+  // === 标签页逻辑 ===
+  function addNewSample() {
+    const name = `样板 ${String.fromCharCode(65 + samples.length)}`; 
+    const id = addSampleInternal(name);
+    selectTab(id);
+    updateAll();
+  }
+
+  // 核心改动：在模板中增加样板独立参数
+  function addSampleInternal(name, idOverride) {
+    const id = idOverride || ('s_' + nextId++);
+    const sampleObj = { id: id, name: name };
+    samples.push(sampleObj);
+
+    // 1. 标签按钮
+    const btn = document.createElement('button');
+    btn.className = 'tab-btn';
+    btn.id = 'tab_btn_' + id;
+
+    const nameSpan = document.createElement('span');
+    nameSpan.className = 'tab-name';
+    nameSpan.textContent = name;
+    btn.appendChild(nameSpan);
+
+    const closeSpan = document.createElement('span');
+    closeSpan.className = 'close-tab';
+    closeSpan.textContent = '×';
+    closeSpan.onclick = function(e) { removeSample(e, id); };
+    btn.appendChild(closeSpan);
+
+    btn.onclick = function(e) { selectTab(id); };
+    
+    document.getElementById('tabsHeader').insertBefore(btn, document.querySelector('.btn-add-tab'));
+
+    // 2. 内容区域 (包含独立的参数设置)
+    const content = document.createElement('div');
+    content.className = 'sample-content';
+    content.id = 'content_' + id;
+    content.innerHTML = `
+      <div class="row" style="padding:0 5px;">
+         <div class="col">
+            <label>样板名称</label>
+            <input type="text" value="${name}" oninput="updateSampleName('${id}', this.value)" />
+         </div>
+      </div>
+      
+      <!-- 独立参数区 -->
+      <div class="sample-params">
+        <div class="row">
+           <div class="col">
+              <label>干粉型号</label>
+              <select class="s-type" onchange="updateAll()">
+                 <option value="MR02" selected>MR02 (中)</option>
+                 <option value="MR01">MR01 (细)</option>
+                 <option value="MR03">MR03 (粗)</option>
+              </select>
+           </div>
+           <div class="col">
+              <label>单板干粉重 (g)</label>
+              <select class="s-weight" onchange="updateAll()">
+                 <option value="50">50g</option>
+                 <option value="100" selected>100g</option>
+                 <option value="150">150g</option>
+                 <option value="200">200g</option>
+              </select>
+           </div>
+           <div class="col">
+              <label>树脂比例</label>
+              <select class="s-resin" onchange="updateAll()">
+                 <option value="30" selected>30%</option>
+                 <option value="0">0%</option>
+                 <option value="60">60%</option>
+              </select>
+           </div>
+        </div>
+        <div class="row">
+           <div class="col">
+              <label>加水量 (g)</label>
+              <input type="number" class="s-water" value="30" oninput="updateAll()" />
+           </div>
+           <div class="col" style="flex:2;">
+              <label>备注 (罩面/砂纸)</label>
+              <input type="text" class="s-note" value="12度罩面 / 不打磨" oninput="updateAll()" />
+           </div>
+        </div>
+      </div>
+
+      <div style="overflow-x:auto;">
+      <table>
+        <thead>
+          <tr>
+            <th style="width:25%">色号</th>
+            <th style="width:20%">稀释比例</th>
+            <th style="width:20%">加入量(g)</th>
+            <th style="width:20%">标准(g/kg)</th>
+            <th style="width:10%">操作</th>
+          </tr>
+        </thead>
+        <tbody id="tbody_${id}"></tbody>
+      </table>
+      </div>
+      <div style="margin-top:10px;">
+        <button class="btn btn-add" onclick="addFormulaRow('${id}')">+ 添加颜色</button>
+      </div>
+    `;
+    document.getElementById('tabsContent').appendChild(content);
+    
+    return id;
+  }
+
+  function removeSample(e, id) {
+    if(e) { e.stopPropagation(); e.preventDefault(); }
+    if(samples.length <= 1) { alert("至少保留一个样板"); return; }
+    if(!confirm("确定删除这个样板吗？")) return;
+
+    samples = samples.filter(s => s.id !== id);
+    document.getElementById('tab_btn_' + id).remove();
+    document.getElementById('content_' + id).remove();
+    
+    if(document.querySelector('.tab-btn.active') === null) {
+        if(samples.length > 0) selectTab(samples[0].id);
+    }
+    updateAll();
+  }
+
+  function selectTab(id) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.querySelectorAll('.sample-content').forEach(c => c.classList.remove('active'));
+    
+    const btn = document.getElementById('tab_btn_' + id);
+    const content = document.getElementById('content_' + id);
+    if(btn) btn.classList.add('active');
+    if(content) content.classList.add('active');
+  }
+
+  function updateSampleName(id, newName) {
+    const s = samples.find(x => x.id === id);
+    if(s) s.name = newName;
+    const btn = document.getElementById('tab_btn_' + id);
+    if(btn) {
+        const nameSpan = btn.querySelector('.tab-name');
+        if(nameSpan) nameSpan.textContent = newName;
+    }
+    updateAll(); 
+  }
+
+  function addFormulaRow(sampleId, code='', ratioVal='0.1', weight='') {
+    const tbody = document.getElementById('tbody_' + sampleId);
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td><input type="text" list="colors_list" class="input-code" value="${code}" placeholder="色号" oninput="updateAll()" /></td>
+      <td>
+        <select class="input-ratio" onchange="updateAll()">
+          <option value="1" ${Number(ratioVal)===1?'selected':''}>原浆</option>
+          <option value="0.1" ${Number(ratioVal)===0.1?'selected':''}>1:10</option>
+          <option value="0.01" ${Number(ratioVal)===0.01?'selected':''}>1:100</option>
+        </select>
+      </td>
+      <td><input type="number" step="0.01" class="input-weight" value="${weight}" placeholder="0.00" oninput="updateAll()" /></td>
+      <td class="highlight"><span class="result-std">-</span></td>
+      <td><button class="btn-remove" onclick="this.closest('tr').remove(); updateAll();">×</button></td>
+    `;
+    tbody.appendChild(tr);
+    updateAll();
+  }
+
+  // === 核心计算与更新 (修改点：读取局部参数) ===
+  function updateAll() {
+    const prodKg = Number(document.getElementById('prodWeight').value) || 0; 
+    
+    // 清空预览区
+    const previewGrid = document.getElementById('previewGrid');
+    const shipmentGrid = document.getElementById('shipmentGrid');
+    previewGrid.innerHTML = '';
+    shipmentGrid.innerHTML = '';
+
+    // 遍历所有样板
+    samples.forEach(sample => {
+        // 1. 获取该样板的独立DOM容器
+        const container = document.getElementById('content_' + sample.id);
+        if(!container) return; // 安全检查
+
+        // 2. 读取独立参数
+        const powderType = container.querySelector('.s-type').value;
+        const powderWeight = Number(container.querySelector('.s-weight').value);
+        const resinRatio = container.querySelector('.s-resin').value;
+        const waterAmount = container.querySelector('.s-water').value;
+        const note = container.querySelector('.s-note').value;
+
+        // 3. 将参数保存到 sample 对象中，供贴纸和导出使用
+        sample.params = { powderType, powderWeight, resinRatio, waterAmount, note };
+
+        const baseKg = powderWeight / 1000;
+        const tbody = document.getElementById('tbody_' + sample.id);
+        const rows = tbody.querySelectorAll('tr');
+        const formulaData = []; 
+
+        rows.forEach(tr => {
+            const code = tr.querySelector('.input-code').value;
+            const ratio = Number(tr.querySelector('.input-ratio').value);
+            const w = Number(tr.querySelector('.input-weight').value);
+            const stdCell = tr.querySelector('.result-std');
+            
+            if(code && w > 0 && baseKg > 0) {
+                const std = (w * ratio) / baseKg;
+                stdCell.textContent = std.toFixed(2);
+                formulaData.push({ 
+                    code, 
+                    ratioTxt: tr.querySelector('.input-ratio').selectedOptions[0].text,
+                    ratioVal: ratio, 
+                    w, 
+                    std 
+                });
+            } else {
+                stdCell.textContent = '-';
+            }
+        });
+
+        sample.calcData = formulaData;
+
+        // 4. 生成留档预览 (显示该样板特定的型号)
+        const previewCard = document.createElement('div');
+        previewCard.className = 'result-card';
+        let formulaHtml = formulaData.length ? '' : '<div style="text-align:center;color:#ccc;padding:10px;">暂无配方数据</div>';
+        
+        formulaData.forEach(item => {
+            formulaHtml += `
+            <div class="formula-line">
+                <span>${item.code} <small>(${item.ratioTxt})</small></span>
+                <span><b>${item.std.toFixed(2)}</b> g/kg</span>
+            </div>`;
+        });
+        
+        // 卡片头部显示更多信息
+        previewCard.innerHTML = `
+            <h3>${sample.name} <button class="btn btn-img" onclick="genSticker('${sample.id}', 'archive')">打印留档</button></h3>
+            <div style="font-size:0.85em; color:#666; background:#f0f0f0; padding:5px; border-radius:4px; margin-bottom:8px;">
+               ${powderType} / ${powderWeight}g / 树脂${resinRatio}%
+            </div>
+            <div class="formula-list">${formulaHtml}</div>
+        `;
+        previewGrid.appendChild(previewCard);
+
+        // 5. 生成发货预览
+        const shipCard = document.createElement('div');
+        shipCard.className = 'result-card shipment-card';
+        let shipHtml = formulaData.length ? '' : '<div style="text-align:center;color:#ccc;padding:10px;">无数据</div>';
+        formulaData.forEach(item => {
+            const shipW = (item.std * prodKg).toFixed(2);
+            shipHtml += `
+            <div class="shipment-line">
+                <span>${item.code}</span>
+                <span><b>${shipW}g</b></span>
+            </div>`;
+        });
+        shipCard.innerHTML = `
+            <h3 style="color:#d35400;">${sample.name} <button class="btn btn-ship" style="width:auto; padding:5px 10px; margin:0;" onclick="genSticker('${sample.id}', 'shipment')">打印发货</button></h3>
+            <div class="formula-list">${shipHtml}</div>
+            <div style="font-size:0.8em; color:#e67e22; text-align:right;">规格: ${prodKg}kg/瓶</div>
+        `;
+        shipmentGrid.appendChild(shipCard);
+    });
+  }
+
+  // === 贴纸生成 (修改点：使用 sample.params) ===
+  function genSticker(sampleId, type) {
+    const sample = samples.find(s => s.id === sampleId);
+    if(!sample || !sample.params) return;
+
+    const project = document.getElementById('projectName').value;
+    const date = document.getElementById('makeDate').value;
+    
+    // 使用样板自己的参数
+    const { powderWeight, powderType, resinRatio, waterAmount } = sample.params;
+    const baseInfo = `${powderWeight}g ${powderType}   ${resinRatio}%树脂   ${waterAmount}g水`;
+
+    const dpi = 203; 
+    const ppm = dpi / 25.4;
+    const W = Math.round(50 * ppm);
+    const H = Math.round(70 * ppm);
+    const canvas = document.createElement('canvas');
+    canvas.width = W;
+    canvas.height = H;
+    const ctx = canvas.getContext('2d');
+    ctx.fillStyle = '#fff';
+    ctx.fillRect(0,0,W,H);
+    ctx.fillStyle = '#000';
+    const mx = 2 * ppm;
+    let y = 3 * ppm;
+
+    if (type === 'archive') {
+        ctx.textAlign = 'center';
+        ctx.font = `900 ${3.4 * ppm}px sans-serif`;
+        const topLine = `${project}  ${date.slice(2)}`; 
+        if (ctx.measureText(topLine).width > W - 2*mx) {
+            ctx.font = `900 ${3.2 * ppm}px sans-serif`;
+            ctx.fillText(project, W/2, y);
+            y += 3.8 * ppm;
+            ctx.font = `bold ${2.8 * ppm}px sans-serif`;
+            ctx.fillText(date, W/2, y);
+        } else {
+            ctx.fillText(topLine, W/2, y);
+        }
+        y += 4.5 * ppm;
+
+        ctx.font = `bold ${2.6 * ppm}px sans-serif`;
+        ctx.textAlign = 'center';
+        ctx.fillText(baseInfo, W/2, y);
+        y += 4.5 * ppm;
+
+        ctx.textAlign = 'left';
+        sample.calcData.forEach(item => {
+            const line = `${item.code} (${item.ratioTxt}) ${item.w}g`;
+            ctx.font = `bold ${3.0 * ppm}px sans-serif`;
+            ctx.fillText(line, mx, y);
+            y += 4.0 * ppm;
+        });
+
+        y += 2.0 * ppm;
+        ctx.beginPath(); 
+        ctx.setLineDash([5, 3]); 
+        ctx.moveTo(mx,y); ctx.lineTo(W-mx,y); ctx.stroke();
+        ctx.setLineDash([]); 
+        y += 4.5 * ppm;
+
+        sample.calcData.forEach(item => {
+            const line = `${item.code}  ${item.std.toFixed(2)}g/kg`;
+            ctx.font = `900 ${3.2 * ppm}px sans-serif`;
+            ctx.fillText(line, mx, y);
+            y += 4.2 * ppm;
+        });
+
+        openModal(canvas, `${project}_${sample.name}_留档`);
+    } else {
+        const prodKg = document.getElementById('prodWeight').value;
+        ctx.textAlign = 'center';
+        ctx.font = `bold ${2.8 * ppm}px sans-serif`;
+        ctx.fillText(sample.name, W/2, y);
+        y += 4 * ppm;
+
+        ctx.font = `900 ${3.5 * ppm}px sans-serif`;
+        if (ctx.measureText(project).width > W - 2*mx) {
+             ctx.font = `900 ${2.8 * ppm}px sans-serif`;
+        }
+        ctx.fillText(project, W/2, y);
+        y += 4.5 * ppm;
+
+        ctx.font = `900 ${5.5 * ppm}px sans-serif`;
+        ctx.fillText(`${prodKg}kg`, W/2, y);
+        y += 5.5 * ppm;
+
+        ctx.font = `${2.4 * ppm}px sans-serif`;
+        ctx.fillText(date, W/2, y);
+        y += 3.5 * ppm;
+
+        ctx.beginPath(); ctx.moveTo(mx,y); ctx.lineTo(W-mx,y); ctx.lineWidth=2; ctx.stroke();
+        y += 4 * ppm;
+
+        sample.calcData.forEach(item => {
+             const shipW = (item.std * Number(prodKg)).toFixed(2);
+             ctx.textAlign = 'left';
+             ctx.font = `bold ${3.2 * ppm}px sans-serif`;
+             ctx.fillText(item.code, mx, y);
+             ctx.textAlign = 'right';
+             ctx.font = `900 ${4.2 * ppm}px sans-serif`;
+             ctx.fillText(`${shipW}g`, W-mx, y);
+             y += 5.5 * ppm;
+        });
+
+        openModal(canvas, `${project}_${sample.name}_发货`);
+    }
+  }
+
+  // === JSON 保存 (结构升级，保存params) ===
+  function saveToJSON() {
+      const data = {
+          project: {
+              name: document.getElementById('projectName').value,
+              date: document.getElementById('makeDate').value,
+              prodWeight: document.getElementById('prodWeight').value
+          },
+          samples: samples.map(s => {
+              // 必须保存 DOM 中当前的 params 值，因为 calcData 是计算结果
+              // 此时 s.params 已经在 updateAll 中被更新为最新值
+              return {
+                  name: s.name,
+                  params: s.params, 
+                  rows: s.calcData.map(r => ({ code: r.code, ratioVal: r.ratioVal, w: r.w }))
+              };
+          })
+      };
+      const jsonStr = JSON.stringify(data, null, 2);
+      const blob = new Blob([jsonStr], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${data.project.name}_${data.project.date}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+  }
+
+  // === JSON 读取 (兼容旧版，应用新版params) ===
+  function loadFromJSON(input) {
+      const file = input.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+          try {
+              const data = JSON.parse(e.target.result);
+              
+              if(data.project) {
+                  document.getElementById('projectName').value = data.project.name || '';
+                  document.getElementById('makeDate').value = data.project.date || '';
+                  document.getElementById('prodWeight').value = data.project.prodWeight || '4';
+              }
+
+              samples = [];
+              document.getElementById('tabsHeader').innerHTML = '<button class="tab-btn btn-add-tab" onclick="addNewSample()">+ 加样板</button>';
+              document.getElementById('tabsContent').innerHTML = '';
+              nextId = 1;
+
+              if(data.samples && Array.isArray(data.samples)) {
+                  data.samples.forEach(s => {
+                      const newId = addSampleInternal(s.name);
+                      
+                      // 恢复独立参数 (如果有保存的话)
+                      if(s.params) {
+                         const container = document.getElementById('content_' + newId);
+                         if(container) {
+                             container.querySelector('.s-type').value = s.params.powderType || 'MR02';
+                             container.querySelector('.s-weight').value = s.params.powderWeight || '100';
+                             container.querySelector('.s-resin').value = s.params.resinRatio || '30';
+                             container.querySelector('.s-water').value = s.params.waterAmount || '30';
+                             container.querySelector('.s-note').value = s.params.note || '';
+                         }
+                      } else if (data.project) {
+                         // 兼容旧版JSON：如果sample没参数，尝试用project的全局参数填充
+                         const container = document.getElementById('content_' + newId);
+                         if(container) {
+                             container.querySelector('.s-type').value = data.project.powderType || 'MR02';
+                             container.querySelector('.s-weight').value = data.project.powderWeight || '100';
+                             container.querySelector('.s-resin').value = data.project.resinRatio || '30';
+                             container.querySelector('.s-water').value = data.project.waterAmount || '30';
+                             container.querySelector('.s-note').value = data.project.extraNote || '';
+                         }
+                      }
+
+                      if(s.rows) {
+                          s.rows.forEach(r => {
+                              addFormulaRow(newId, r.code, r.ratioVal, r.w);
+                          });
+                      }
+                  });
+              } else {
+                  addNewSample();
+              }
+              if(samples.length > 0) selectTab(samples[0].id);
+              updateAll();
+              alert("工程加载成功！");
+          } catch(err) {
+              alert("文件解析失败：" + err);
+          }
+      };
+      reader.readAsText(file);
+      input.value = ''; 
+  }
+
+  // === 导出 CSV (修改点：读取 s.params) ===
+  function exportAllCSV() {
+    const project = document.getElementById('projectName').value;
+    const date = document.getElementById('makeDate').value;
+    let csv = "\uFEFF"; 
+    csv += `项目,${project}\n日期,${date}\n\n`;
+
+    samples.forEach(s => {
+        // 使用该样板自己的参数
+        const p = s.params || {}; 
+        const info = `${p.powderType || ''} / ${p.powderWeight || ''}g / ${p.resinRatio || ''}%树脂 / ${p.note || ''}`;
+
+        csv += `【${s.name}】(${info}),,, \n`;
+        csv += `色号,稀释比例,打样加入(g),标准(g/kg)\n`;
+        if(s.calcData) {
+            s.calcData.forEach(d => {
+                csv += `${d.code},${d.ratioTxt},${d.w},${d.std.toFixed(2)}\n`;
+            });
+        }
+        csv += `\n`;
+    });
+
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = `${project}_配方汇总_${date}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  }
+
+  function openModal(canvas, title) {
+    const url = canvas.toDataURL('image/png');
+    document.getElementById('stickerImg').src = url;
+    const link = document.getElementById('downloadLink');
+    link.href = url;
+    link.download = title + '.png';
+    document.getElementById('modalTitle').textContent = title;
+    document.getElementById('imgModal').classList.add('open');
+  }
+  function closeModal(e) { if(e) e.stopPropagation(); document.getElementById('imgModal').classList.remove('open'); }
+
+</script>
+</body>
+</html>
